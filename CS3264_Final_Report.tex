@@ -60,7 +60,7 @@
 
 
 \begin{abstract}
-Polypharmacy is a growing concern in Singapore's ageing population, substantially increasing the risk of adverse drug-drug interactions (DDIs). We apply three interpretable machine learning models, such as Logistic Regression, MLP, and Random Forest to binary DDI prediction using MACCS molecular fingerprints derived from the BIOSNAP ChChMiner dataset. Random Forest achieves the strongest predictive performance and supports transparent, clinician-readable explanations via tree-ranked decision paths, making it well-suited for clinical decision support in the Singapore context.
+Polypharmacy is a growing concern in Singapore's ageing population, substantially increasing the risk of adverse drug-drug interactions (DDIs). We apply and compare 3 major machine learning models, Logistic Regression, MLP, and Random Forest to binary DDI prediction using MACCS molecular fingerprints derived from the BIOSNAP ChChMiner dataset. Random Forest achieves strong predictive performance and supports transparent, clinician-readable explanations via tree-ranked decision paths (TRDP), making it well-suited for clinical decision support in the Singapore context.
 \end{abstract}
 
 \section{Introduction}
@@ -83,7 +83,7 @@ Singapore presents a particularly important context for addressing this problem.
     \label{fig:population_pyramid}
 \end{figure}
 
-Second, Singapore exhibits a unique disease profile, with high rates of metabolic and cardiovascular conditions\cite{sgprofile}, which often necessitate multi-drug treatment plans, while diabetes are far more prevelant in Western states\cite{ma2013type2}. Existing drug safety guidelines for older adults have often been developed for Western populations and may not transfer directly to Asian settings, reinforcing the need to evaluate clinician-facing medication-safety tools in the local Singapore context.\cite{westernbias} Accordingly, our proposed app is intended as a prescription-stage decision support tool for clinicians in Singapore, flagging potentially risky drug pairs.
+Second, Singapore exhibits a unique disease profile, with high rates of metabolic and cardiovascular conditions\cite{sgprofile}, which often necessitate multi-drug treatment plans. Existing drug safety guidelines for older adults have often been developed for Western populations and may not transfer directly to Asian settings (diabetes are far more prevelant in Western states\cite{ma2013type2}), reinforcing the need to evaluate clinician-facing medication-safety tools in the local Singapore context.\cite{westernbias} Accordingly, our proposed application is intended as a prescription-stage decision support tool for clinicians in Singapore, flagging potentially risky drug pairs.
 
 Moreover, in Singapore's public hospitals, DDI screening is primarily performed by pharmacists who manually vet every medication order before supply\cite{Guo2021}. However, no widely deployed automated DDI alerting system has been publicly documented in the local healthcare infrastructure. The gap is more acute in private GP clinics, where 80\% of primary care is delivered and medications are frequently dispensed by doctors with minimal pharmacist involvement.\cite{Guo2021}
 
@@ -109,7 +109,7 @@ We formalize DDI prediction as:
 \begin{equation}
     \hat{y} = F(D_A, D_B), \quad \hat{y} \in [0, 1]
 \end{equation}
-where $D_A, D_B \in \mathbb{R}^{d}$ are MACCS fingerprints of the two drugs and $\hat{y}$ is the predicted interaction probability. A threshold $\delta$ converts $\hat{y}$ into a binary prediction, where $\hat{y} = 1$ suggests the likely occurence of DDI, while $\hat{y} = 0$ means that the potential interaction is undetected (but not unlikely to happen). Positive pairs are then explained by our interpretable model.
+where $D_A, D_B \in \mathbb{R}^{d}$ are MACCS fingerprints of the two drugs and $\hat{y}$ is the predicted interaction probability. A threshold $\delta$ converts $\hat{y}$ into a binary prediction, where $\hat{y} = 1$ suggests the likely occurence of DDI, while $\hat{y} = 0$ means that the potential interaction is undetected (but not a proof a safety). Positive pairs are then explained by our interpretable model.
 
 
 \subsection{Datasets and Data Structures}
@@ -154,7 +154,7 @@ The particular relationship presented in drug interaction through naive logistic
 
 However, a major limitation of MLP algorithm is its difficulty in providing an interpretable explanation to the doctor when advising possible drug interactions. Although algorithms such as LIME provide model-agnostic explanations. There are simpler alternatives such as SHAP, whose limitation will be discussed in the later section.
 
-\subsubsection{Random Forest}
+\subsubsection{Random Forest(RF)}
 \
 \newline
 Random Forest, introduced by \citet{Breiman2001}, is a non-parametric ensemble method that combines the predictions of $T$ independently trained decision trees to reduce variance while retaining the low bias of individual trees. Each tree $\mathcal{T}_t$ ($t = 1, \ldots, T$) is trained on a bootstrap resample $\mathcal{D}_t \sim \text{Bootstrap}(\mathcal{D})$ drawn \emph{with replacement} from the full training set $\mathcal{D} = \{(\mathbf{x}_i, y_i)\}_{i=1}^{n}$, where $\mathbf{x}_i \in \mathbb{R}^{p}$ and $y_i \in \{0, 1\}$.
@@ -264,7 +264,7 @@ A major limitation arises from fingerprint sparsity. Assuming uniform prior for 
 \begin{equation}
    p = 1 - \left(1 - r! \left(\frac{m}{d}\right)^{r}\right)^{n}
 \end{equation}
-where $m$ features are sampled per split, $n$ is the number of trees, and $d$ is the number of non-zero features. With $m=12$, $n=100$, $d=167$: $p\approx0.65$ for $r=2$ and $p\approx0.20$ for $r=3$, degrading rapidly with $r$.
+where $m$ features are sampled per split, $n$ is the number of trees, and $d$ is the number of features. With $m=12$, $n=200$, $d=167$: $p\approx0.65$ for $r=2$ and $p\approx0.20$ for $r=3$, degrading rapidly with $r$.
 
 We propose a two-stage remedy: train a preliminary RF to obtain SHAP importances, then use those as feature-sampling weights in a second forest, increasing co-occurrence of relevant features in single paths. A limitation is that first-stage SHAP scores may reflect dataset biases, potentially reducing generalisation to novel drug pairs.
 
@@ -396,10 +396,10 @@ Guided RF ($\alpha{=}1$) & 77 & 70 & 7  & \textbf{0.909} & 0.021  \\
 \subsection{Evaluation}
 
 \paragraph{Predictive accuracy.}
-LR (ACC~0.677) confirms that the DDI classification boundary is non-linear and a linear model is insufficient. MLP achieves the highest raw accuracy (ACC~0.840), but its black-box nature precludes clinical explanation. RF at depth~20 matches MLP closely (ACC~0.838) while remaining fully interpretable via TRDP, making it the preferred model for this application. SHAP-guided RF incurs only a modest accuracy cost ($\Delta$AUC~$\approx -0.011$, AUC~0.905), which is acceptable given the interpretability gains described below.
+The low accuracy of LR (ACC~0.677) suggests that the DDI classification boundary is non-linear. MLP achieves the highest raw accuracy (ACC~0.840), but its black-box nature precludes clinical explanation. RF at depth~20 matches MLP closely (ACC~0.838) while remaining fully interpretable via TRDP, making it the preferred model for this application. SHAP-guided RF incurs only a modest accuracy cost ($\Delta$AUC~$\approx -0.011$, AUC~0.905), which is acceptable given the interpretability gains described below.
 
 \paragraph{Interpretability.}
-SHAP ranks globally important features, but its output is a vector of real values that the clinician must further interpret to form a decision rule. TRDP, by contrast, surfaces a complete if-then conjunctive rule per prediction. The guided RF's TRDP paths are substantially more consistent: path-feature Jaccard similarity at $k=20$ is $0.240$ vs.\ $0.044$ for the baseline (${\times}5.5$), and the advantage persists at $k=30$ ($0.170$ vs.\ $0.095$). Both models maintain perfect prediction consistency ($\bar{C}=1.000$) across all neighbourhood radii, confirming that explanation improvement is not traded against predictive stability. The guided rule also achieves higher precision as a standalone classifier (0.909 vs.\ 0.838) with a greater number of flagged data, reflecting a more meaningful and accurate feature set produced by SHAP-guided sampling.
+SHAP ranks globally important features, but its output is a vector of real values that the clinician must further interpret to form a decision rule. TRDP, by contrast, surfaces a complete if-then conjunctive rule per prediction. The guided RF's TRDP paths are substantially more consistent: path-feature Jaccard similarity at $k=20$ is $0.240$ vs.\ $0.044$ for the baseline (${\times}5.5$), and the advantage persists at $k=30$ ($0.170$ vs.\ $0.095$). Both models maintain perfect prediction consistency ($\bar{C}=1.000$) across all neighbourhood radii, confirming that explanation improvement is not traded against predictive stability. The guided rule also achieves higher precision as a standalone classifier (0.909 vs.\ 0.838) with a greater number of flagged data, reflecting a relatively more meaningful and accurate explanation produced by SHAP-guided sampling.
 
 \subsection{Limitations}
 Several limitations remain. Our evaluation is entirely \textit{in silico}, so we cannot qualitatively validate whether the predicted interaction rules are clinically meaningful to practitioners. MACCS fingerprints capture structural substructures but omit properties such as protein binding and metabolic pathways that also drive DDIs. Finally, BIOSNAP is derived from Western drug databases and may not reflect the specific drug portfolio or prescribing patterns of Singapore's primary care setting.
